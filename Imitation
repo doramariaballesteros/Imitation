@@ -1,1 +1,91 @@
+# **IMITATION:  VOICE CONVERSION USING SIGNAL PROCESSING**
 
+---
+
+
+AUTHOR:  DORA MARIA BALLESTEROS
+
+---
+If you use this code, please cite the following documents:
+
+1.   Ballesteros L, D. M., & Moreno A, J. M. (2012). On the ability of adaptation of speech signals and data hiding. Expert Systems with Applications, 39(16), 12574-12579.
+2.   Ballesteros L, D. M., & Moreno A, J. M. (2012). Highly transparent steganography model of speech signals using Efficient Wavelet Masking. Expert Systems with Applications, 39(10), 9141-9149.
+3.   Ballesteros, D. M., Rodriguez-Ortega, Y., Renza, D., & Arce, G. (2021). Deep4SNet: deep learning for fake speech classification. Expert Systems with Applications, 184, 115465.
+
+# This code allows a speech signal (i.e., source) to imitate another speech signal (i.e., target) using signal processing
+# The inputs are: source, target
+# The outputs are: imitated, key
+# Author: Dora Maria Ballesteros
+# Last version: 18/10/2023
+
+from scipy.io import wavfile
+import IPython
+import numpy as np
+from numpy import savetxt
+import pywt
+from pywt import wavedec
+import librosa
+import librosa.display
+
+# 1. Load the audios and scaling
+source, sr1 = librosa.load('/content/secret.wav', sr=8000)
+source=source/(np.max(abs(source)))
+IPython.display.Audio(source, rate=sr1)
+print(sr1)
+
+target, sr2 = librosa.load('/content/target.wav', sr=8000)
+
+target=target/(np.max(abs(target)))
+IPython.display.Audio(target, rate=sr2)
+
+print(sr2)
+
+#2. Apply DWT
+csource = wavedec(source, 'sym4', level=2)
+ctarget = wavedec(target, 'sym4', level=2)
+
+csA2 = csource[0]
+csD2 = csource[1]
+csD1 = csource[2]
+
+ctA2 = ctarget[0]
+ctD2 = ctarget[1]
+ctD1 = ctarget[2]
+
+cs=np.concatenate((csA2, csD2, csD1), axis=0)
+ct=np.concatenate((ctA2, ctD2, ctD1), axis=0)
+
+#3. Apply Sort
+csource_sorted =np.sort(cs)
+index1 = np.argsort(cs)
+
+ctarget_sorted= np.sort(ct)
+index2 = np.argsort(ct)
+
+# 4. Assign new places to the wavelet coefficients of the source
+
+cs_m=np.zeros(len(cs))
+cs_m[index2]=cs[index1]
+
+l1 = len(csource[0])
+l2 = len(csource[1])
+l3 = len(csource[2])
+
+csource_m=csource
+csource_m[0] = cs_m[0:l1]
+csource_m[1] = cs_m[l1:l1+l2]
+csource_m[2] = cs_m[l1+l2:l1+l2+l3]
+
+# Obtain and save the key
+
+key =np.zeros(len(cs))
+key[index1]=index2
+savetxt('key.csv', key, delimiter=',')
+
+# 5. Apply IDW and play the "imitated" audio
+
+imitated = pywt.waverec(csource_m, 'sym4')
+IPython.display.Audio(imitated, rate=sr1)
+
+import soundfile as sf
+sf.write('imitated.wav', imitated, sr1, subtype='PCM_24')
