@@ -1,0 +1,65 @@
+# **REVERSE:  VOICE CONVERSION USING SIGNAL PROCESSING**
+
+---
+
+
+AUTHOR:  DORA MARIA BALLESTEROS
+
+---
+If you use this code, please cite the following documents:
+
+1.   Ballesteros L, D. M., & Moreno A, J. M. (2012). On the ability of adaptation of speech signals and data hiding. Expert Systems with Applications, 39(16), 12574-12579.
+2.   Ballesteros L, D. M., & Moreno A, J. M. (2012). Highly transparent steganography model of speech signals using Efficient Wavelet Masking. Expert Systems with Applications, 39(10), 9141-9149.
+3.   Ballesteros, D. M., Rodriguez-Ortega, Y., Renza, D., & Arce, G. (2021). Deep4SNet: deep learning for fake speech classification. Expert Systems with Applications, 184, 115465.
+
+# This code allows you to reverse the Imitation using signal processing
+# The inputs are: imitated, key
+# The outputs are: reverse
+# Author: Dora Maria Ballesteros
+# Last version: 18/10/2023
+
+from scipy.io import wavfile
+import IPython
+import numpy as np
+import pywt
+import csv
+from pywt import wavedec
+from pywt import waverec
+import librosa
+import librosa.display
+
+# 1. Load the audio and apply DWT
+
+imitated, sr3 = librosa.load('/content/imitated.wav', sr=8000)
+IPython.display.Audio(imitated, rate=sr3)
+
+cImitated = wavedec(imitated, 'sym4', level=2)
+cIA2 = cImitated[0]
+cID2 = cImitated[1]
+cID1 = cImitated[2]
+cI=np.concatenate((cIA2, cID2, cID1), axis=0)
+
+# 2. Load the key
+
+data_path = '/content/key.csv'
+with open(data_path, 'r') as f:
+    reader = csv.reader(f, delimiter=',')
+    key = np.array(list(reader)).astype(float)
+
+key = np.transpose(key)
+key = np.reshape(key,(len(cI)))
+key = key.astype(int)
+
+# 3. Assign new places of the wavelet coefficients
+
+cI=cI[key]
+cIm = cImitated
+l1 = len(cImitated[0])
+l2 = len(cImitated[1])
+l3 = len(cImitated[2])
+cIm[0] = cI[0:l1]
+cIm[1] = cI[l1:l1+l2]
+cIm[2] = cI[l1+l2:l1+l2+l3]
+
+reverse = pywt.waverec(cIm, 'sym4')
+IPython.display.Audio(reverse, rate=sr3)
